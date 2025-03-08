@@ -1,62 +1,74 @@
+#include "../include/client.h"
+#include "../include/gridscape.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "gridscape.h"
-#include "client.h"
+
+void debug(Grid *grid) {
+  for (int i = 1; i < 8; i++) {
+    Object tree = {OBJECT_TREE, "Tree", i, i};
+    Object rock = {OBJECT_ROCK, "Rock", i, i};
+    setTile(grid, tree, 20, (i + 10));
+    setTile(grid, rock, 25, (i + 10));
+    // Pond... James Pond
+    Object water = {OBJECT_WATER, "Water", 1, 1};
+    for (int x = 10; x < 15; x++) {
+      for (int y = 10; y < 18; y++) {
+        setTile(grid, water, x, y);
+      }
+    }
+  }
+}
+
+void placeObject(Grid *grid, Object object, int x, int y) {
+  setTile(grid, object, x, y);
+}
 
 int main() {
-	// Init grid
-	int height = 100;
-	int width = 100;
-	Grid *grid = createGrid(height, width);
-	Object tree = {1, "Tree", 1};
-	for (int x = 0; x < height; x++) {
-		for (int y = 0; y < width; y++) {
-			Object object = {0, "", 0};
-			setTile(grid, object, x, y);
-			if (x == 0 || x == height - 1 || y == 0 || y == width - 1) {
-				setTile(grid, tree, x, y);
-			}
-		}
-	}
+  // Init Grid
+  int height = 100;
+  int width = 100;
+  Grid *grid = createGrid(height, width);
+  initMap(grid);
 
-	// Object tree = {1, "Tree", 1};
-	// setTile(grid, tree, 2, 2);
-	// Object rock = {2, "Rock", 1};
-	// setTile(grid, rock, 4, 4);
-	// Object water = {3, "Water", 1};
-	// setTile(grid, water, 6, 6);
+  debug(grid);
 
-	Object player_obj = {4, "Player", 1};
-	Player *player = createPlayer(player_obj, 3, 3);
-	setTile(grid, player->object, 3, 3);
+  Object playerObj = {OBJECT_PLAYER, "Player", 1, 1};
+  Player *player = createPlayer(playerObj, 1, 3, 3);
+  Player *new = createPlayer(playerObj, 1, 5, 5);
 
-	// Render Client
-	CursesWindow *cursesWindow = initCursesWindow(20, 20);
-    renderGrid(cursesWindow, grid, player);
+  setTile(grid, player->object, 3, 3);
+  setTile(grid, new->object, 5, 5);
+  // Render Client
+  CursesWindow *cursesWindow = initCursesWindow();
+  renderGrid(cursesWindow, grid, player);
 
-    // Wait for user input and quit if 'q' is pressed
-    int ch;
-    while ((ch = getch()) != 'q') {
-        switch (ch) {
-            case 'w':
-                movePlayer(grid, player, 0, -1); // Move player up
-                break;
-            case 'a':
-                movePlayer(grid, player, -1, 0); // Move player left
-                break;
-            case 's':
-                movePlayer(grid, player, 0, 1); // Move player down
-                break;
-            case 'd':
-                movePlayer(grid, player, 1, 0); // Move player right
-                break;
-        }
-        renderGrid(cursesWindow, grid, player);
+  // Quit on q
+  int ch;
+  while ((ch = getch()) != 'q') {
+    if (ch >= '1' && ch <= '9' && ch != '5') {
+      int index = ch - '0';
+      movePlayer(grid, player, MOVEMENT_DELTA[index][0],
+                 MOVEMENT_DELTA[index][1], index);
+      renderGrid(cursesWindow, grid, player);
+    } else if (ch == 'e' || ch == 'E') {
+      playerInteract(grid, player);
+      renderGrid(cursesWindow, grid, player);
+    } else if (ch == 'a' || ch == 'A') {
+      playerAttack(grid, player);
+      renderGrid(cursesWindow, grid, player);
+    } else if (ch == '5') {
+      Tile frontTile = checkTile(grid, player);
+      mvwprintw(cursesWindow->bottomWin, 2, 2,
+                "Looking at: %s (ID: %d, Tier: %d)      ",
+                frontTile.object.id ? frontTile.object.name : "Empty",
+                frontTile.object.id, frontTile.object.tier);
+      wrefresh(cursesWindow->bottomWin);
     }
+  }
 
-    closeCursesWindow(cursesWindow);
-	free(player);
-    freeGrid(grid);
+  closeCursesWindow(cursesWindow);
+  free(player);
+  freeGrid(grid);
 
-    return 0;
+  return 0;
 }
